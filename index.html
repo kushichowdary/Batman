@@ -1,0 +1,79 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KLU Futuristic Attendance Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'primary': '#D7263D',
+              'primary-dark': '#A51C24',
+              'accent': '#02182B',
+              'accent-dark': '#011425',
+              'alt-text': '#00E5FF',
+              'light-text': '#e6eef5',
+              'muted-text': '#9aa8b3',
+              'surface': 'rgba(255, 255, 255, 0.03)',
+              'card-bg': 'rgba(255, 255, 255, 0.04)',
+              'card-border': 'rgba(255, 255, 255, 0.08)',
+              'success': '#22c55e',
+              'warning': '#f59e0b',
+            },
+            fontFamily: {
+              sans: ['"Poppins"', 'sans-serif'],
+            },
+            animation: {
+              neonPulse: 'neonPulse 4s ease-in-out infinite',
+              gradientShift: 'gradientShift 8s linear infinite',
+              float: 'float 6s ease-in-out infinite',
+              shimmer: 'shimmer 3s infinite',
+            },
+            keyframes: {
+              neonPulse: {
+                '0%, 100%': { textShadow: '0 0 5px rgba(0, 229, 255, 0.2), 0 0 10px rgba(215, 38, 61, 0.1)' },
+                '50%': { textShadow: '0 0 20px rgba(0, 229, 255, 0.5), 0 0 30px rgba(215, 38, 61, 0.2)' },
+              },
+              gradientShift: {
+                '0%, 100%': { backgroundPosition: '0% 50%' },
+                '50%': { backgroundPosition: '100% 50%' },
+              },
+              float: {
+                '0%, 100%': { transform: 'translateY(0px)' },
+                '50%': { transform: 'translateY(-10px)' },
+              },
+              shimmer: {
+                '0%': { transform: 'translateX(-100%)' },
+                '100%': { transform: 'translateX(100%)' },
+              },
+            }
+          }
+        }
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react-icons/": "https://aistudiocdn.com/react-icons@^5.5.0/",
+    "framer-motion": "https://aistudiocdn.com/framer-motion@^12.23.24",
+    "jspdf": "https://aistudiocdn.com/jspdf@^3.0.3",
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.4"
+  }
+}
+</script>
+</head>
+  <body class="bg-accent-dark">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
