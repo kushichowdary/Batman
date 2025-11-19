@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaDownload, FaUndo, FaHistory, FaChevronLeft, FaChevronRight, FaStar, FaCheckCircle, FaCalculator } from 'react-icons/fa';
+import { FaDownload, FaUndo, FaCalculator, FaLayerGroup } from 'react-icons/fa';
 import jsPDF from 'jspdf';
 
 type HistoryEntry = {
@@ -20,19 +20,14 @@ const LtpsCalculator: React.FC = () => {
     const [skill, setSkill] = useState('');
     const [attendancePercentage, setAttendancePercentage] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState('');
-    const [analysis, setAnalysis] = useState<{ status: string; componentAnalysis: string[]; recommendations: string[] } | null>(null);
+    const [analysis, setAnalysis] = useState<{ status: string; componentAnalysis: string[]; } | null>(null);
     const [history, setHistory] = useState<HistoryEntry[]>([]);
-    const [showHistory, setShowHistory] = useState(false);
 
     useEffect(() => {
         try {
             const savedHistory = localStorage.getItem('ltpsHistory');
-            if (savedHistory) {
-                setHistory(JSON.parse(savedHistory));
-            }
-        } catch (error) {
-            console.error("Failed to parse history from localStorage", error);
-        }
+            if (savedHistory) setHistory(JSON.parse(savedHistory));
+        } catch (error) { console.error(error); }
     }, []);
 
     useEffect(() => {
@@ -48,13 +43,8 @@ const LtpsCalculator: React.FC = () => {
     };
 
     const handleInputChange = (setter: React.Dispatch<React.SetStateAction<string>>) => (event: React.ChangeEvent<HTMLInputElement>) => {
-        const value = event.target.value;
-        if (value === '' || (parseFloat(value) >= 0 && parseFloat(value) <= 100)) {
-            setter(value);
-            setErrorMessage('');
-        } else {
-            setErrorMessage('Please enter a value between 0 and 100.');
-        }
+        setter(event.target.value);
+        setErrorMessage('');
     };
 
     const resetForm = () => {
@@ -62,137 +52,162 @@ const LtpsCalculator: React.FC = () => {
         setAttendancePercentage(null); setErrorMessage(''); setAnalysis(null);
     };
 
+    const percentage = attendancePercentage ? parseFloat(attendancePercentage) : 0;
+
     const generatePDF = () => {
         if (!analysis || !attendancePercentage) return;
         const doc = new jsPDF();
-        doc.setTextColor("#D7263D");
-        doc.setFontSize(22);
-        doc.text('Attendance Report', 105, 20, { align: 'center' });
+        doc.setFillColor(11, 17, 32); 
+        doc.rect(0, 0, 210, 297, 'F'); // Dark background
         
-        doc.setTextColor(40, 40, 40);
-        doc.setFontSize(14);
-        doc.text(`Subject: ${subject || 'N/A'}`, 20, 40);
+        doc.setTextColor(0, 229, 255); // Cyan
+        doc.setFontSize(22);
+        doc.text('KLU Attendance Report', 105, 20, { align: 'center' });
+        
+        doc.setTextColor(255, 255, 255);
         doc.setFontSize(16);
+        doc.text(`Subject: ${subject || 'General'}`, 20, 40);
         doc.text(`Overall Attendance: ${attendancePercentage}%`, 20, 50);
-        doc.setFontSize(12);
+        
+        if (percentage >= 85) {
+            doc.setTextColor(0, 255, 148);
+        } else if (percentage >= 75) {
+            doc.setTextColor(255, 184, 0);
+        } else {
+            doc.setTextColor(255, 15, 91);
+        }
         doc.text(`Status: ${analysis.status}`, 20, 60);
 
-        doc.setTextColor("#D7263D");
-        doc.setFontSize(16);
-        doc.text('Component Analysis:', 20, 80);
-        doc.setTextColor(40, 40, 40);
-        doc.setFontSize(12);
-        analysis.componentAnalysis.forEach((item, index) => doc.text(`• ${item}`, 25, 90 + (index * 8)));
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(14);
+        doc.text('Component Breakdown:', 20, 80);
+        
+        analysis.componentAnalysis.forEach((item, index) => {
+            doc.text(`• ${item}`, 25, 90 + (index * 10));
+        });
         
         doc.save(`${subject || 'attendance'}-report.pdf`);
     };
-
+    
     const calculateTotal = () => {
         let totalWeight = 0, totalScore = 0;
         const components = [
-            { value: lect, weight: weights.lecture },
-            { value: tut, weight: weights.tutorial },
-            { value: pract, weight: weights.practical },
-            { value: skill, weight: weights.skilling }
+            { value: lect, weight: weights.lecture, name: 'Lecture' },
+            { value: tut, weight: weights.tutorial, name: 'Tutorial' },
+            { value: pract, weight: weights.practical, name: 'Practical' },
+            { value: skill, weight: weights.skilling, name: 'Skilling' }
         ];
 
         let hasValidInput = false;
+        const breakdown: string[] = [];
+
         for (const comp of components) {
             if (comp.value !== '') {
                 const val = parseFloat(comp.value);
                 if (isNaN(val) || val < 0 || val > 100) {
-                    setErrorMessage('Please enter valid percentages (0-100).');
+                    setErrorMessage(`Invalid value for ${comp.name}. Use 0-100.`);
                     return;
                 }
                 hasValidInput = true;
                 totalWeight += comp.weight;
                 totalScore += val * comp.weight;
+                breakdown.push(`${comp.name}: ${val}% (Weight: ${comp.weight})`);
             }
         }
 
         if (!hasValidInput) {
-            setErrorMessage('Please enter at least one component percentage.');
+            setErrorMessage('Enter at least one component percentage.');
             return;
         }
 
-        const calculatedPercentage = totalScore / totalWeight;
-        const roundedPercentage = calculatedPercentage.toFixed(2);
+        const calc = totalScore / totalWeight;
+        const rounded = calc.toFixed(2);
 
-        setAttendancePercentage(roundedPercentage);
+        setAttendancePercentage(rounded);
         setErrorMessage('');
         
-        const componentValues = { lect: parseFloat(lect) || 0, tut: parseFloat(tut) || 0, pract: parseFloat(pract) || 0, skill: parseFloat(skill) || 0 };
+        setAnalysis({
+            status: getAttendanceStatus(calc),
+            componentAnalysis: breakdown
+        });
 
-        const newAnalysis = {
-            status: getAttendanceStatus(calculatedPercentage),
-            componentAnalysis: Object.entries(componentValues).filter(([, val]) => val > 0).map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}%`),
-            recommendations: []
-        };
-        setAnalysis(newAnalysis);
-
-        const newHistoryEntry: HistoryEntry = {
+        setHistory(prev => [{
             subject: subject || 'Untitled',
-            percentage: roundedPercentage,
+            percentage: rounded,
             timestamp: new Date().toLocaleString(),
-            components: componentValues,
-            status: newAnalysis.status
-        };
-        setHistory(prev => [newHistoryEntry, ...prev.slice(0, 49)]); // Keep last 50 entries
+            components: { lect: parseFloat(lect)||0, tut: parseFloat(tut)||0, pract: parseFloat(pract)||0, skill: parseFloat(skill)||0 },
+            status: getAttendanceStatus(calc)
+        }, ...prev.slice(0, 9)]);
     };
 
     return (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-4xl mx-auto p-6 md:p-8 bg-card-bg border border-card-border rounded-2xl shadow-2xl space-y-8">
-            <div className="text-center">
-                <h1 className="text-3xl md:text-4xl font-bold text-light-text mb-2 flex items-center justify-center gap-3"><FaCalculator className="text-primary"/> L-T-P-S Calculator</h1>
-                <p className="text-muted-text">Calculate weighted attendance for subjects with different components.</p>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-4xl mx-auto p-8 bg-accent-light/50 backdrop-blur-lg border border-card-border rounded-3xl shadow-2xl space-y-8">
+            <div className="text-center border-b border-white/5 pb-6">
+                <h1 className="text-3xl font-bold text-text-main mb-2 flex items-center justify-center gap-3"><FaLayerGroup className="text-secondary"/> L-T-P-S Calculator</h1>
+                <p className="text-text-muted">Weighted attendance calculation for multi-component courses.</p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="md:col-span-2">
-                    <label className="font-semibold text-light-text">Subject Name (Optional)</label>
-                    <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g., Data Structures" className="mt-2 w-full p-3 bg-surface border border-card-border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"/>
+                    <label className="text-xs font-bold uppercase tracking-wider text-text-muted ml-1">Subject Name</label>
+                    <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g., Data Structures" className="w-full mt-2 p-4 bg-surface border border-white/10 rounded-xl focus:ring-2 focus:ring-secondary outline-none text-white placeholder:text-white/20"/>
                 </div>
+                
                 {[
-                    { label: 'Lecture (%)', value: lect, setter: setLect, weight: weights.lecture },
-                    { label: 'Tutorial (%)', value: tut, setter: setTut, weight: weights.tutorial },
-                    { label: 'Practical (%)', value: pract, setter: setPract, weight: weights.practical },
-                    { label: 'Skilling (%)', value: skill, setter: setSkill, weight: weights.skilling }
-                ].map((input, index) => (
-                     <div key={index}>
-                        <label className="font-semibold text-light-text flex justify-between items-center">{input.label} <span className="text-xs font-mono px-2 py-1 bg-primary/20 text-primary rounded-full">{input.weight} weight</span></label>
-                        <input type="number" value={input.value} onChange={handleInputChange(input.setter)} placeholder="0-100" className="mt-2 w-full p-3 bg-surface border border-card-border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"/>
+                    { label: 'Lecture', val: lect, set: setLect, w: 100, color: 'border-primary' },
+                    { label: 'Tutorial', val: tut, set: setTut, w: 25, color: 'border-secondary' },
+                    { label: 'Practical', val: pract, set: setPract, w: 50, color: 'border-warning' },
+                    { label: 'Skilling', val: skill, set: setSkill, w: 25, color: 'border-success' }
+                ].map((item, index) => (
+                     <div key={index} className={`bg-surface p-4 rounded-xl border-l-4 ${item.color}`}>
+                        <div className="flex justify-between mb-2">
+                            <label className="font-semibold text-white">{item.label}</label>
+                            <span className="text-xs bg-white/10 px-2 py-1 rounded text-text-muted">Weight: {item.w}</span>
+                        </div>
+                        <input type="number" value={item.val} onChange={handleInputChange(item.set)} placeholder="%" className="w-full p-2 bg-accent border border-white/10 rounded focus:border-white/50 outline-none text-white font-mono text-right"/>
                     </div>
                 ))}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4">
-                <motion.button onClick={calculateTotal} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1 flex justify-center items-center gap-2 p-3 bg-primary text-white font-bold rounded-lg shadow-lg hover:bg-primary-dark transition-colors">
+            <div className="flex gap-4 pt-4">
+                <motion.button onClick={calculateTotal} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex-grow py-4 bg-secondary text-accent font-bold rounded-xl shadow-[0_0_20px_rgba(0,229,255,0.3)] hover:bg-cyan-300 transition-colors">
                     Calculate
                 </motion.button>
-                <motion.button onClick={resetForm} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1 flex justify-center items-center gap-2 p-3 bg-card-border text-muted-text font-bold rounded-lg hover:bg-surface transition-colors">
-                    <FaUndo /> Reset
+                <motion.button onClick={resetForm} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="px-6 bg-surface border border-white/10 rounded-xl text-text-muted hover:text-white transition-colors">
+                    <FaUndo />
                 </motion.button>
             </div>
             
             <AnimatePresence>
-                {errorMessage && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-3 bg-primary/20 text-primary text-center rounded-lg">{errorMessage}</motion.div>}
+                {errorMessage && <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="p-3 bg-primary/20 border border-primary/50 text-primary text-center rounded-lg text-sm">{errorMessage}</motion.div>}
             </AnimatePresence>
 
             {attendancePercentage && analysis && (
-                <motion.div className="space-y-6 pt-6 border-t border-card-border" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                     <div className="p-6 rounded-xl bg-surface">
-                        <h3 className="text-lg font-semibold text-muted-text">Overall Weighed Attendance</h3>
-                        <p className="text-5xl font-bold text-primary">{attendancePercentage}%</p>
-                        <p className="mt-2 text-sm">Status: <strong className="font-semibold">{analysis.status}</strong></p>
-                    </div>
-                     <div className="p-6 rounded-xl bg-surface">
-                        <h3 className="text-xl font-bold mb-4 text-light-text">Component Breakdown</h3>
-                        <ul className="list-disc list-inside space-y-2 text-muted-text">
-                            {analysis.componentAnalysis.map((item, index) => <li key={index}>{item}</li>)}
-                        </ul>
-                    </div>
-                    <motion.button onClick={generatePDF} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="w-full flex justify-center items-center gap-2 p-3 bg-success/80 text-white font-bold rounded-lg shadow-lg hover:bg-success transition-colors">
-                        <FaDownload /> Download Report
+                <motion.div className="space-y-6 pt-8 border-t border-white/10" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                     <div className="flex flex-col md:flex-row items-center gap-8">
+                        <div className="relative w-40 h-40 flex items-center justify-center">
+                            <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                                <path className="text-surface" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" />
+                                <path className={`${parseFloat(attendancePercentage) >= 85 ? 'text-success' : parseFloat(attendancePercentage) >= 75 ? 'text-warning' : 'text-primary'}`} strokeDasharray={`${parseFloat(attendancePercentage)}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" />
+                            </svg>
+                            <div className="absolute text-center">
+                                <span className="text-2xl font-bold text-white block">{attendancePercentage}%</span>
+                            </div>
+                        </div>
+                        <div className="flex-grow space-y-4 w-full">
+                            <div className="p-4 bg-surface rounded-xl border border-white/5">
+                                <h4 className="text-sm text-text-muted uppercase">Result</h4>
+                                <p className="text-xl font-semibold text-white">{analysis.status}</p>
+                            </div>
+                            <div className="space-y-1">
+                                {analysis.componentAnalysis.map((line, i) => (
+                                    <p key={i} className="text-sm text-text-muted flex items-center gap-2"><span className="w-1 h-1 bg-secondary rounded-full"></span> {line}</p>
+                                ))}
+                            </div>
+                        </div>
+                     </div>
+                    <motion.button onClick={generatePDF} whileHover={{ scale: 1.02 }} className="w-full flex justify-center items-center gap-2 p-3 bg-white/5 border border-white/10 text-white font-bold rounded-xl hover:bg-white/10 transition-colors">
+                        <FaDownload /> Export Report
                     </motion.button>
                 </motion.div>
             )}

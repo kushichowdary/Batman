@@ -11,68 +11,93 @@
         theme: {
           extend: {
             colors: {
-              'primary': '#D7263D',
-              'primary-dark': '#A51C24',
-              'accent': '#02182B',
-              'accent-dark': '#011425',
-              'alt-text': '#00E5FF',
-              'light-text': '#e6eef5',
-              'muted-text': '#9aa8b3',
-              'surface': 'rgba(255, 255, 255, 0.03)',
-              'card-bg': 'rgba(255, 255, 255, 0.04)',
-              'card-border': 'rgba(255, 255, 255, 0.08)',
-              'success': '#22c55e',
-              'warning': '#f59e0b',
+              'primary': '#FF0F5B', /* Neon Red */
+              'primary-dark': '#D00040',
+              'secondary': '#00E5FF', /* Neon Cyan */
+              'accent': '#0B1120', /* Deep Navy */
+              'accent-light': '#16223D',
+              'surface': 'rgba(255, 255, 255, 0.05)',
+              'surface-hover': 'rgba(255, 255, 255, 0.1)',
+              'card-border': 'rgba(255, 255, 255, 0.1)',
+              'success': '#00FF94',
+              'warning': '#FFB800',
+              'text-main': '#F0F4F8',
+              'text-muted': '#94A3B8',
             },
             fontFamily: {
               sans: ['"Poppins"', 'sans-serif'],
+              mono: ['"Courier New"', 'monospace'],
             },
             animation: {
-              neonPulse: 'neonPulse 4s ease-in-out infinite',
-              gradientShift: 'gradientShift 8s linear infinite',
-              float: 'float 6s ease-in-out infinite',
-              shimmer: 'shimmer 3s infinite',
+              'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'glow': 'glow 2s ease-in-out infinite alternate',
+              'float': 'float 6s ease-in-out infinite',
             },
             keyframes: {
-              neonPulse: {
-                '0%, 100%': { textShadow: '0 0 5px rgba(0, 229, 255, 0.2), 0 0 10px rgba(215, 38, 61, 0.1)' },
-                '50%': { textShadow: '0 0 20px rgba(0, 229, 255, 0.5), 0 0 30px rgba(215, 38, 61, 0.2)' },
-              },
-              gradientShift: {
-                '0%, 100%': { backgroundPosition: '0% 50%' },
-                '50%': { backgroundPosition: '100% 50%' },
+              glow: {
+                '0%': { boxShadow: '0 0 5px rgba(0, 229, 255, 0.2)' },
+                '100%': { boxShadow: '0 0 20px rgba(0, 229, 255, 0.6), 0 0 10px rgba(255, 15, 91, 0.3)' },
               },
               float: {
-                '0%, 100%': { transform: 'translateY(0px)' },
+                '0%, 100%': { transform: 'translateY(0)' },
                 '50%': { transform: 'translateY(-10px)' },
-              },
-              shimmer: {
-                '0%': { transform: 'translateX(-100%)' },
-                '100%': { transform: 'translateX(100%)' },
-              },
+              }
             }
           }
         }
       }
     </script>
+    <style>
+      body {
+        background-color: #0B1120;
+        color: #F0F4F8;
+      }
+      .bg-grid-pattern {
+        background-size: 40px 40px;
+        background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                          linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      }
+      .glass-panel {
+        background: rgba(11, 17, 32, 0.7);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .neon-text {
+        text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+      }
+      /* Scrollbar styling */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #0B1120; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #1e293b; 
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #334155; 
+      }
+    </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script type="importmap">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script type="importmap">
 {
   "imports": {
     "react": "https://aistudiocdn.com/react@^19.2.0",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react-icons/": "https://aistudiocdn.com/react-icons@^5.5.0/",
     "framer-motion": "https://aistudiocdn.com/framer-motion@^12.23.24",
     "jspdf": "https://aistudiocdn.com/jspdf@^3.0.3",
-    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.4"
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.4",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/"
   }
 }
 </script>
 </head>
-  <body class="bg-accent-dark">
+  <body class="antialiased">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

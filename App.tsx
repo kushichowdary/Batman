@@ -9,11 +9,7 @@ import SubjectCalculator from './pages/SubjectCalculator';
 
 function App() {
   return (
-    <div className="font-sans text-light-text selection:bg-primary selection:text-white">
-      <div className="text-center p-2 bg-accent-dark">
-        <h3 className="text-primary inline-block m-0 text-lg font-semibold">Attendance Calculator</h3>
-        <h3 className="text-accent inline-block m-0 ml-2 text-lg font-semibold">-KLU</h3>
-      </div>
+    <div className="font-sans text-text-main selection:bg-primary selection:text-white h-full">
       <Router>
         <Layout>
             <Routes>

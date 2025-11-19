@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaUndo, FaPercentage } from 'react-icons/fa';
+import { FaUndo, FaPercentage, FaCheck } from 'react-icons/fa';
 
 const SubjectCalculator: React.FC = () => {
     const [totalClasses, setTotalClasses] = useState('');
@@ -18,95 +18,89 @@ const SubjectCalculator: React.FC = () => {
 
     const calculateAttendance = () => {
         if (!totalClasses || !attendedClasses) {
-            setError('Please enter both total and attended classes.');
+            setError('Enter both values.');
             return;
         }
-        const total = parseInt(totalClasses);
-        const attended = parseInt(attendedClasses);
+        const total = parseFloat(totalClasses);
+        const attended = parseFloat(attendedClasses);
 
         if (isNaN(total) || isNaN(attended) || total <= 0) {
-            setError('Please enter valid positive numbers.');
+            setError('Invalid numbers.');
             return;
         }
         if (attended > total) {
-            setError('Attended classes cannot be more than total classes.');
+            setError('Attended cannot exceed Total.');
             return;
         }
         setError('');
         const percentage = (attended / total) * 100;
-        setAttendancePercentage(Math.round(percentage));
+        setAttendancePercentage(parseFloat(percentage.toFixed(2)));
     };
 
-    const getPercentageClass = (percentage: number) => {
-        if (percentage >= 85) return 'bg-success/20 text-success border-success/30';
-        if (percentage >= 75) return 'bg-warning/20 text-warning border-warning/30';
-        return 'bg-primary/20 text-primary border-primary/30';
-    };
-
-    const getAttendanceStatus = (percentage: number) => {
-        if (percentage >= 85) return 'Excellent! Keep up the great work! 🌟';
-        if (percentage >= 75) return 'Good, but aim higher for a buffer. 📈';
-        return 'This needs immediate attention! ⚠️';
+    const getColor = (percentage: number) => {
+        if (percentage >= 85) return 'text-success border-success shadow-success/20';
+        if (percentage >= 75) return 'text-warning border-warning shadow-warning/20';
+        return 'text-primary border-primary shadow-primary/20';
     };
 
     return (
         <motion.div 
-            className="max-w-2xl mx-auto p-6 md:p-8 bg-card-bg border border-card-border rounded-2xl shadow-2xl space-y-8"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            className="max-w-xl mx-auto mt-10 p-8 bg-accent-light/60 backdrop-blur-md border border-card-border rounded-3xl shadow-2xl"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
         >
-            <div className="text-center">
-                <motion.h1 className="text-3xl md:text-4xl font-bold text-light-text mb-2 flex items-center justify-center gap-3">
-                    <FaPercentage className="text-primary" /> Subject Calculator
-                </motion.h1>
-                <p className="text-muted-text">Quickly calculate your attendance for any subject.</p>
+            <div className="text-center mb-8">
+                <div className="inline-block p-4 rounded-full bg-surface mb-4 border border-white/5">
+                     <FaPercentage className="text-3xl text-secondary" />
+                </div>
+                <h1 className="text-2xl font-bold text-white">Quick Calc</h1>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                    <label className="font-semibold text-light-text">Total Classes</label>
-                    <input
-                        type="number"
-                        value={totalClasses}
-                        onChange={(e) => setTotalClasses(e.target.value)}
-                        placeholder="e.g., 50"
-                        className="mt-2 w-full p-3 bg-surface border border-card-border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
-                    />
+            <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="text-xs text-text-muted uppercase tracking-wider ml-1">Total</label>
+                        <input
+                            type="number"
+                            value={totalClasses}
+                            onChange={(e) => setTotalClasses(e.target.value)}
+                            className="w-full mt-1 p-4 bg-surface border border-white/10 rounded-xl focus:ring-2 focus:ring-secondary outline-none text-center text-xl font-bold text-white placeholder:text-white/10"
+                            placeholder="0"
+                        />
+                    </div>
+                    <div>
+                         <label className="text-xs text-text-muted uppercase tracking-wider ml-1">Attended</label>
+                        <input
+                            type="number"
+                            value={attendedClasses}
+                            onChange={(e) => setAttendedClasses(e.target.value)}
+                            className="w-full mt-1 p-4 bg-surface border border-white/10 rounded-xl focus:ring-2 focus:ring-secondary outline-none text-center text-xl font-bold text-white placeholder:text-white/10"
+                            placeholder="0"
+                        />
+                    </div>
                 </div>
-                <div>
-                    <label className="font-semibold text-light-text">Attended Classes</label>
-                    <input
-                        type="number"
-                        value={attendedClasses}
-                        onChange={(e) => setAttendedClasses(e.target.value)}
-                        placeholder="e.g., 40"
-                        className="mt-2 w-full p-3 bg-surface border border-card-border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
-                    />
-                </div>
-            </div>
 
-            <div className="flex flex-col sm:flex-row gap-4">
-                <motion.button 
-                    onClick={calculateAttendance}
-                    whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                    className="flex-1 flex justify-center items-center gap-2 p-3 bg-primary text-white font-bold rounded-lg shadow-lg hover:bg-primary-dark transition-colors"
-                >
-                    Calculate
-                </motion.button>
-                <motion.button 
-                    onClick={resetForm}
-                    whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                    className="flex-1 flex justify-center items-center gap-2 p-3 bg-card-border text-muted-text font-bold rounded-lg hover:bg-surface transition-colors"
-                >
-                    <FaUndo /> Reset
-                </motion.button>
+                <div className="flex gap-3">
+                    <button 
+                        onClick={calculateAttendance}
+                        className="flex-1 py-4 bg-secondary text-accent font-bold rounded-xl shadow-lg hover:bg-cyan-300 transition-all"
+                    >
+                        Calculate
+                    </button>
+                    <button 
+                        onClick={resetForm}
+                        className="px-6 bg-surface border border-white/10 rounded-xl text-text-muted hover:text-white transition-colors"
+                    >
+                        <FaUndo />
+                    </button>
+                </div>
             </div>
             
             <AnimatePresence>
                 {error && (
                     <motion.div 
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="p-3 bg-primary/20 text-primary text-center rounded-lg"
+                        initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                        className="mt-4 text-primary text-center text-sm font-medium"
                     >
                         {error}
                     </motion.div>
@@ -115,13 +109,12 @@ const SubjectCalculator: React.FC = () => {
 
             {attendancePercentage !== null && (
                 <motion.div 
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className={`p-6 rounded-xl border ${getPercentageClass(attendancePercentage)} text-center`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`mt-8 p-6 rounded-2xl border-2 bg-accent ${getColor(attendancePercentage)} shadow-[0_0_30px_currentColor] text-center`}
                 >
-                    <h3 className="text-lg font-semibold text-muted-text">Your Attendance is</h3>
-                    <p className="text-6xl font-bold my-2">{attendancePercentage}%</p>
-                    <p className="mt-2 font-medium">{getAttendanceStatus(attendancePercentage)}</p>
+                    <p className="text-sm font-medium opacity-80 uppercase tracking-widest">Final Attendance</p>
+                    <p className="text-6xl font-extrabold my-2 tracking-tighter">{attendancePercentage}%</p>
                 </motion.div>
             )}
         </motion.div>

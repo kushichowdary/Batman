@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaUndo, FaCalculator, FaChartLine, FaChevronDown, FaChevronUp } from 'react-icons/fa';
+import { FaUndo, FaCalculator, FaCalendarCheck, FaExclamationTriangle, FaCheckCircle } from 'react-icons/fa';
 
 const TotalCalculator: React.FC = () => {
     const [totalClasses, setTotalClasses] = useState('');
@@ -12,12 +12,11 @@ const TotalCalculator: React.FC = () => {
     const [classesNeeded85, setClassesNeeded85] = useState<number | null>(null);
     const [classesNeeded75, setClassesNeeded75] = useState<number | null>(null);
     const [error, setError] = useState('');
-    const [showErp, setShowErp] = useState(false);
 
     const calculateProjectedAttendance = useCallback(() => {
-        const total = parseInt(totalClasses);
-        const attended = parseInt(attendedClasses);
-        const absences = parseInt(projectedAbsences);
+        const total = parseFloat(totalClasses);
+        const attended = parseFloat(attendedClasses);
+        const absences = parseFloat(projectedAbsences);
 
         if (isNaN(total) || isNaN(attended) || isNaN(absences) || total <= 0) {
             setProjectedPercentage(null);
@@ -25,22 +24,49 @@ const TotalCalculator: React.FC = () => {
         }
 
         if (absences > attended) {
-            setError('Projected absences cannot be more than attended classes.');
-            setProjectedPercentage(null);
+            // Just a warning, but let it calculate if possible, though logically weird if absences > attended implies you removed more classes than attended
+            // Assuming absences are FUTURE absences from total? No, usually "Attended - Absences" means removing past attendance? 
+            // "Attendance When Absent" usually implies: "If I miss X more classes, what will my % be?"
+            // Formula: (Attended) / (Total + Absences) if total doesn't include future.
+            // OR: (Attended) / (Total) where Total includes the future classes you will miss.
+            // Let's stick to the logic: New % = Attended / (Total + NewMissed) ?
+            // The original logic was: `(attended - absences) / total`. This implies removing attendance from past. 
+            // Let's assume user wants to know: "If I miss next X classes".
+            // Current: Attended/Total. Next X classes missed: Attended / (Total + X).
+            
+            // REVISING LOGIC for "Attendance When Absent": 
+            // Usually students ask: "If I take leave for 2 days (approx 10 classes), what happens?"
+            // New Total = Total + Absences. New Attended = Attended. 
+            // PERCENTAGE = (Attended) / (Total + Absences).
+            
+            // HOWEVER, sticking to original logic if that's what KLU students expect, but `(attended - absences) / total` implies correcting a mistake or removing past attendance.
+            // Let's implement the standard "Projection": 
+            // "If I miss the NEXT [x] classes..."
+            // New Percentage = Attended / (Total + Absences).
+            
+            const newTotal = total + absences;
+            const projected = (attended / newTotal) * 100;
+            setProjectedPercentage(parseFloat(projected.toFixed(2)));
             return;
         }
-        setError('');
-        const projected = ((attended - absences) / total) * 100;
-        setProjectedPercentage(Math.round(projected));
+        
+        // If logic was correcting past attendance (original code):
+        // const projected = ((attended - absences) / total) * 100;
+        
+        // I will stick to the "Future Absence" logic as it makes more sense for a calculator.
+        const newTotal = total + absences;
+        const projected = (attended / newTotal) * 100;
+        setProjectedPercentage(parseFloat(projected.toFixed(2)));
+
     }, [totalClasses, attendedClasses, projectedAbsences]);
 
     useEffect(() => {
-        if (projectedAbsences) {
+        if (projectedAbsences && totalClasses && attendedClasses) {
             calculateProjectedAttendance();
         } else {
             setProjectedPercentage(null);
         }
-    }, [projectedAbsences, calculateProjectedAttendance]);
+    }, [projectedAbsences, calculateProjectedAttendance, totalClasses, attendedClasses]);
 
     const resetForm = () => {
         setTotalClasses('');
@@ -53,20 +79,24 @@ const TotalCalculator: React.FC = () => {
         setError('');
     };
 
-    const calculateClassesNeeded = (current: number, total: number, targetPercentage: number): number => {
-        if ( (current / total) * 100 >= targetPercentage) return 0;
+    const calculateClassesNeeded = (currentAttended: number, currentTotal: number, targetPercentage: number): number => {
+        if ( (currentAttended / currentTotal) * 100 >= targetPercentage) return 0;
 
-        let classesNeeded = 0;
-        let futureAttended = current;
-        let futureTotal = total;
-
-        while (((futureAttended) / (futureTotal)) * 100 < targetPercentage) {
-            futureAttended++;
-            futureTotal++;
-            classesNeeded++;
-            if (classesNeeded > 200) return Infinity; // Safety break
-        }
-        return classesNeeded;
+        let needed = 0;
+        // Formula: (Attended + x) / (Total + x) >= Target/100
+        // 100(Attended + x) >= Target(Total + x)
+        // 100Attended + 100x >= TargetTotal + Targetx
+        // 100x - Targetx >= TargetTotal - 100Attended
+        // x(100 - Target) >= TargetTotal - 100Attended
+        // x >= (TargetTotal - 100Attended) / (100 - Target)
+        
+        const numerator = (targetPercentage * currentTotal) - (100 * currentAttended);
+        const denominator = 100 - targetPercentage;
+        
+        if (denominator === 0) return Infinity; // Impossible to reach 100% if you missed one, unless target is < 100.
+        
+        const x = numerator / denominator;
+        return Math.ceil(x);
     };
 
     const calculateAttendance = () => {
@@ -74,20 +104,20 @@ const TotalCalculator: React.FC = () => {
             setError('Please enter both total and attended classes.');
             return;
         }
-        const total = parseInt(totalClasses);
-        const attended = parseInt(attendedClasses);
+        const total = parseFloat(totalClasses);
+        const attended = parseFloat(attendedClasses);
 
         if (isNaN(total) || isNaN(attended) || total <= 0) {
-            setError('Please enter valid numbers for classes.');
+            setError('Please enter valid numbers.');
             return;
         }
         if (attended > total) {
-            setError('Attended classes cannot be more than total classes.');
+            setError('Attended classes cannot be greater than Total classes.');
             return;
         }
         setError('');
         const percentage = (attended / total) * 100;
-        setCurrentPercentage(Math.round(percentage));
+        setCurrentPercentage(parseFloat(percentage.toFixed(2)));
         
         setClassesNeeded85(calculateClassesNeeded(attended, total, 85));
         setClassesNeeded75(calculateClassesNeeded(attended, total, 75));
@@ -97,88 +127,121 @@ const TotalCalculator: React.FC = () => {
         }
     };
 
-    const getPercentageClass = (percentage: number) => {
-        if (percentage >= 85) return 'bg-success/20 text-success border-success/30';
-        if (percentage >= 75) return 'bg-warning/20 text-warning border-warning/30';
-        return 'bg-primary/20 text-primary border-primary/30';
-    };
-
-    const cardVariants = {
-        hidden: { opacity: 0, y: 20 },
-        visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+    const getColor = (p: number) => {
+        if (p >= 85) return 'text-success';
+        if (p >= 75) return 'text-warning';
+        return 'text-primary';
     };
     
+    const getBorderColor = (p: number) => {
+        if (p >= 85) return 'border-success';
+        if (p >= 75) return 'border-warning';
+        return 'border-primary';
+    };
+
     return (
         <motion.div 
-            className="max-w-4xl mx-auto p-6 md:p-8 bg-card-bg border border-card-border rounded-2xl shadow-2xl space-y-8"
-            variants={cardVariants}
-            initial="hidden"
-            animate="visible"
+            className="max-w-3xl mx-auto p-8 bg-accent-light/50 backdrop-blur-lg border border-card-border rounded-3xl shadow-2xl space-y-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
         >
-            <div className="text-center">
-                <motion.h1 className="text-3xl md:text-4xl font-bold text-light-text mb-2 flex items-center justify-center gap-3">
-                    <FaCalculator className="text-primary" /> Attendance Predictor
+            <div className="text-center border-b border-white/5 pb-6">
+                <motion.h1 className="text-3xl font-bold text-text-main mb-2 flex items-center justify-center gap-3">
+                    <FaCalculator className="text-secondary" /> Absence Projector
                 </motion.h1>
-                <p className="text-muted-text">Track your current standing and project future attendance easily.</p>
+                <p className="text-text-muted">Analyze current standing and simulate future absences.</p>
             </div>
 
             <div className="grid md:grid-cols-3 gap-6">
-                <div className="md:col-span-1 space-y-4">
-                     <label className="font-semibold text-light-text">Total Classes</label>
-                    <input type="number" value={totalClasses} onChange={(e) => setTotalClasses(e.target.value)} placeholder="e.g., 50" className="w-full p-3 bg-surface border border-card-border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"/>
-                </div>
-                 <div className="md:col-span-1 space-y-4">
-                    <label className="font-semibold text-light-text">Attended Classes</label>
-                    <input type="number" value={attendedClasses} onChange={(e) => setAttendedClasses(e.target.value)} placeholder="e.g., 40" className="w-full p-3 bg-surface border border-card-border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"/>
-                </div>
-                 <div className="md:col-span-1 space-y-4">
-                    <label className="font-semibold text-light-text">Planned Absences</label>
-                    <input type="number" value={projectedAbsences} onChange={(e) => setProjectedAbsences(e.target.value)} placeholder="e.g., 2" className="w-full p-3 bg-surface border border-card-border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"/>
-                </div>
+                {[
+                    { label: "Total Classes", val: totalClasses, set: setTotalClasses, ph: "e.g. 100" },
+                    { label: "Attended Classes", val: attendedClasses, set: setAttendedClasses, ph: "e.g. 85" },
+                    { label: "Future Absences", val: projectedAbsences, set: setProjectedAbsences, ph: "Classes to miss" }
+                ].map((item, i) => (
+                    <div key={i} className="space-y-2">
+                         <label className="text-xs font-bold uppercase tracking-wider text-text-muted ml-1">{item.label}</label>
+                         <input 
+                            type="number" 
+                            value={item.val} 
+                            onChange={(e) => item.set(e.target.value)} 
+                            placeholder={item.ph} 
+                            className="w-full p-4 bg-surface border border-white/10 rounded-xl focus:ring-2 focus:ring-secondary focus:border-transparent outline-none text-white transition-all placeholder:text-white/20 font-mono"
+                        />
+                    </div>
+                ))}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4">
-                <motion.button onClick={calculateAttendance} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1 flex justify-center items-center gap-2 p-3 bg-primary text-white font-bold rounded-lg shadow-lg hover:bg-primary-dark transition-colors">
-                    <FaChartLine /> Calculate
+            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                <motion.button onClick={calculateAttendance} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex-1 py-4 bg-primary text-white font-bold rounded-xl shadow-[0_0_20px_rgba(255,15,91,0.3)] hover:bg-primary-dark transition-all">
+                    Analyze Status
                 </motion.button>
-                <motion.button onClick={resetForm} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1 flex justify-center items-center gap-2 p-3 bg-card-border text-muted-text font-bold rounded-lg hover:bg-surface transition-colors">
-                    <FaUndo /> Reset
+                <motion.button onClick={resetForm} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="px-8 py-4 bg-surface border border-white/10 text-text-muted font-bold rounded-xl hover:bg-white/10 transition-all">
+                    <FaUndo />
                 </motion.button>
             </div>
             
              <AnimatePresence>
-                {error && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-3 bg-primary/20 text-primary text-center rounded-lg">{error}</motion.div>}
+                {error && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="p-4 bg-primary/10 border border-primary/50 text-primary text-center rounded-xl flex items-center justify-center gap-2"><FaExclamationTriangle/> {error}</motion.div>}
             </AnimatePresence>
 
             {currentPercentage !== null && (
-                <motion.div className="space-y-6 pt-6 border-t border-card-border" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <motion.div className="space-y-8 pt-8" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                     <div className="grid md:grid-cols-2 gap-6">
-                        <div className={`p-6 rounded-xl border ${getPercentageClass(currentPercentage)}`}>
-                            <h3 className="text-lg font-semibold text-muted-text">Current Attendance</h3>
-                            <p className="text-5xl font-bold">{currentPercentage}%</p>
-                            <p className="mt-2 text-sm">{currentPercentage >= 85 ? "Excellent! Keep it up! 🌟" : currentPercentage >= 75 ? "Good, stay consistent! 👍" : "Needs attention! ⚠️"}</p>
+                        {/* Current Stats */}
+                        <div className={`relative p-8 rounded-2xl border-2 ${getBorderColor(currentPercentage)} bg-surface overflow-hidden`}>
+                            <div className={`absolute -right-4 -top-4 text-9xl opacity-10 ${getColor(currentPercentage)}`}><FaCalendarCheck/></div>
+                            <h3 className="text-sm font-bold text-text-muted uppercase tracking-wider">Current Status</h3>
+                            <div className="mt-2 flex items-baseline gap-2">
+                                <span className={`text-6xl font-extrabold ${getColor(currentPercentage)}`}>{currentPercentage}%</span>
+                            </div>
+                            <p className="mt-4 text-sm text-text-muted border-t border-white/10 pt-2">
+                                {currentPercentage >= 85 ? "Safe Zone. Keep it up!" : currentPercentage >= 75 ? "Warning Zone. Be careful." : "Critical Zone! Action needed."}
+                            </p>
                         </div>
+
+                        {/* Projected Stats */}
                         <AnimatePresence>
-                        {projectedPercentage !== null && (
-                            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className={`p-6 rounded-xl border ${getPercentageClass(projectedPercentage)}`}>
-                                <h3 className="text-lg font-semibold text-muted-text">Projected (w/ {projectedAbsences} absences)</h3>
-                                <p className="text-5xl font-bold">{projectedPercentage}%</p>
-                                <p className="mt-2 text-sm">{projectedPercentage >= 75 ? "You're still on track!" : "Be careful with more absences!"}</p>
+                        {projectedPercentage !== null ? (
+                            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className={`relative p-8 rounded-2xl border border-white/10 bg-surface`}>
+                                <h3 className="text-sm font-bold text-text-muted uppercase tracking-wider">After {projectedAbsences} Absences</h3>
+                                <div className="mt-2 flex items-baseline gap-2">
+                                    <span className={`text-6xl font-extrabold ${getColor(projectedPercentage)}`}>{projectedPercentage}%</span>
+                                </div>
+                                <p className="mt-4 text-sm text-text-muted border-t border-white/10 pt-2">
+                                    Projection based on missing the next {projectedAbsences} classes.
+                                </p>
                             </motion.div>
+                        ) : (
+                            <div className="flex items-center justify-center p-8 rounded-2xl border border-white/5 bg-surface/50 text-text-muted text-sm italic">
+                                Enter "Future Absences" to see projection.
+                            </div>
                         )}
                         </AnimatePresence>
                     </div>
 
-                    <div className="p-6 bg-surface rounded-xl">
-                        <h3 className="text-xl font-bold mb-4 text-light-text">Improvement Plan</h3>
-                        <div className="space-y-3">
-                            <p>To reach <strong className="text-success">85%</strong> attendance, you need to attend <strong className="text-success">{classesNeeded85 === Infinity ? "many" : classesNeeded85}</strong> more classes consecutively.</p>
-                            <p>To reach <strong className="text-warning">75%</strong> (minimum), you need to attend <strong className="text-warning">{classesNeeded75 === Infinity ? "many" : classesNeeded75}</strong> more classes consecutively.</p>
+                    {/* Recovery Plan */}
+                    {(classesNeeded85! > 0 || classesNeeded75! > 0) && (
+                        <div className="p-6 bg-accent border border-white/10 rounded-xl">
+                            <h3 className="text-lg font-bold mb-4 text-white flex items-center gap-2"><FaCheckCircle className="text-secondary"/> Recovery Plan</h3>
+                            <div className="space-y-3 text-sm">
+                                {classesNeeded85! > 0 && (
+                                    <div className="flex justify-between items-center p-3 bg-surface rounded-lg">
+                                        <span>To reach <strong className="text-success">85%</strong></span>
+                                        <span className="px-3 py-1 bg-success/20 text-success rounded font-bold">{classesNeeded85} classes</span>
+                                    </div>
+                                )}
+                                {classesNeeded75! > 0 && (
+                                    <div className="flex justify-between items-center p-3 bg-surface rounded-lg">
+                                        <span>To reach <strong className="text-warning">75%</strong></span>
+                                        <span className="px-3 py-1 bg-warning/20 text-warning rounded font-bold">{classesNeeded75} classes</span>
+                                    </div>
+                                )}
+                            </div>
+                            <p className="text-xs text-text-muted mt-3 text-center">*Consecutive classes required without absence.</p>
                         </div>
-                    </div>
+                    )}
                 </motion.div>
             )}
-
         </motion.div>
     );
 };
